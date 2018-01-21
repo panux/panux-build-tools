@@ -315,8 +315,9 @@ func main() {
 			Before: bef,
 		},
 		{
-			Name:  "source, src",
-			Usage: "generate commands to load sources",
+			Name:    "source",
+			Aliases: []string{"src"},
+			Usage:   "generate commands to load sources",
 			Action: func(ctx *cli.Context) error {
 				tw := tar.NewWriter(out)
 				for _, s := range pk.Sources {
