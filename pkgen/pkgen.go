@@ -186,7 +186,7 @@ func main() {
 	var out io.WriteCloser
 	var pk rawPackageGenerator
 	bef := func(ctx *cli.Context) error {
-		inputpath := ctx.String("input")
+		inputpath := ctx.GlobalString("input")
 		if inputpath == "-" {
 			in = os.Stdin
 		} else {
@@ -196,7 +196,7 @@ func main() {
 			}
 			in = f
 		}
-		outputpath := ctx.String("output")
+		outputpath := ctx.GlobalString("output")
 		if outputpath == "-" {
 			out = os.Stdout
 		} else {
@@ -243,11 +243,21 @@ func main() {
 					Value: "\n",
 					Usage: "seperator to use for output",
 				},
+				cli.BoolFlag{
+					Name:  "n",
+					Usage: "disable trailing seperator",
+				},
 			},
 			Action: func(ctx *cli.Context) error {
 				_, err := fmt.Fprint(out, strings.Join(pk.BuildDependencies, ctx.String("seperator")))
 				if err != nil {
 					return cli.NewExitError(err, 65)
+				}
+				if !ctx.Bool("n") {
+					_, err = fmt.Fprint(out, ctx.String("seperator"))
+					if err != nil {
+						return cli.NewExitError(err, 65)
+					}
 				}
 				return nil
 			},
@@ -268,6 +278,10 @@ func main() {
 					Value: "\n",
 					Usage: "seperator to use for output",
 				},
+				cli.BoolFlag{
+					Name:  "n",
+					Usage: "disable trailing seperator",
+				},
 			},
 			Action: func(ctx *cli.Context) error {
 				pkg := ctx.String("package")
@@ -277,6 +291,12 @@ func main() {
 				_, err := fmt.Fprint(out, strings.Join(pk.Packages[pkg].Dependencies, ctx.String("seperator")))
 				if err != nil {
 					return cli.NewExitError(err, 65)
+				}
+				if !ctx.Bool("n") {
+					_, err = fmt.Fprint(out, ctx.String("seperator"))
+					if err != nil {
+						return cli.NewExitError(err, 65)
+					}
 				}
 				return nil
 			},
