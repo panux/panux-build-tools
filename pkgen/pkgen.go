@@ -37,21 +37,79 @@ type pkg struct {
 	Dependencies []string
 }
 
-func loadPkgen(in io.Reader) (rpg *rawPackageGenerator, e error) {
+func loadPkgen(in io.Reader, hostarch string, buildarch string) (pg *rawPackageGenerator, e error) {
 	dat, err := ioutil.ReadAll(in)
 	if err != nil {
 		return nil, err
 	}
-	rpg = new(rawPackageGenerator)
-	err = yaml.Unmarshal(dat, rpg)
+	pg = new(rawPackageGenerator)
+	err = yaml.Unmarshal(dat, pg)
+	if err != nil {
+		return nil, err
+	}
+	if pg.Builder == "" {
+		pg.Builder = "alpine"
+	}
+	pg.Script, err = tmpl(pg.Script, pg, hostarch, buildarch)
+	if err != nil {
+		return nil, err
+	}
+	pg.Sources, err = tmpl(pg.Sources, pg, hostarch, buildarch)
 	if err != nil {
 		return nil, err
 	}
 	return
 }
 
-func tmpl(str []string, pg *rawPackageGenerator) ([]string, error) {
-	t, err := template.New("pkgen").Parse(strings.Join(str, "\n"))
+func tmpl(str []string, pg *rawPackageGenerator, hostarch string, buildarch string) ([]string, error) {
+	t, err := template.New("pkgen").Funcs(map[string]interface{}{
+		"make": func(dir string, args ...string) string {
+			lines := make([]string, len(args))
+			for i, a := range args {
+				lines[i] = fmt.Sprintf("$(MAKE) -C %s %s", dir, a)
+			}
+			return strings.Join(lines, "\n")
+		},
+		"extract": func(name string, ext string) string {
+			return strings.Join(
+				[]string{
+					fmt.Sprintf("tar -xf src/%s-%s.tar.%s", name, pg.Version, ext),
+					fmt.Sprintf("mv %s-%s %s", name, pg.Version, name),
+				},
+				"\n")
+		},
+		"pkmv": func(file string, srcpkg string, destpkg string) string {
+			if strings.HasSuffix(file, "/") { //cut off trailing /
+				file = file[:len(file)-2]
+			}
+			dir, _ := filepath.Split(file)
+			mv := fmt.Sprintf("mv %s %s",
+				filepath.Join("out", srcpkg, file),
+				filepath.Join("out", destpkg, dir),
+			)
+			if dir != "" {
+				return strings.Join([]string{
+					fmt.Sprintf("mkdir -p %s", filepath.Join("out", destpkg, dir)),
+					mv,
+				}, "\n")
+			}
+			return mv
+		},
+		"mvman": func(pkg string) string {
+			return fmt.Sprintf("mkdir -p out/%s-man/usr/share\nmv out/%s/usr/share/man out/%s-man/usr/share/man", pkg, pkg, pkg)
+		},
+		"configure": func(dir string) string {
+			if pg.Data["configure"] == nil {
+				pg.Data["configure"] = []interface{}{}
+			}
+			car := pg.Data["configure"].([]interface{})
+			ca := make([]string, len(car))
+			for i, v := range car {
+				ca[i] = v.(string)
+			}
+			return fmt.Sprintf("(cd %s && ./configure %s)", dir, strings.Join(ca, " "))
+		},
+	}).Parse(strings.Join(str, "\n"))
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +118,7 @@ func tmpl(str []string, pg *rawPackageGenerator) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return strings.Split(buf.String(), "\n"), nil
+	return strings.Split(strings.TrimSpace(buf.String()), "\n"), nil
 }
 
 type cmd struct {
@@ -132,9 +190,9 @@ TARS = $(foreach pkg,$(PKGS),tars/$(pkg).tar.gz)
 $(TARS): build tars infos
 	tar -cf $@ -C out/$(basename $@) .
 outs: $(foreach pkg,$(PKGS),out/$(pkg)/.pkginfo)
-out/%: out
+out/%%: out
 	mkdir $@
-out/%/.pkginfo: sources out/%
+out/%%/.pkginfo: sources out/%%
 	cp src/.pkginfo/$(basename $(dirname $@)).pkginfo out/$(basename $(dirname $@))/.pkginfo
 out tars src:
 	mkdir $@
@@ -206,12 +264,9 @@ func main() {
 			}
 			out = f
 		}
-		pg, err := loadPkgen(in)
+		pg, err := loadPkgen(in, ctx.GlobalString("host"), ctx.GlobalString("build"))
 		if err != nil {
 			return cli.NewExitError(err, 65)
-		}
-		if pg.Builder == "" {
-			pg.Builder = "alpine"
 		}
 		pk = *pg
 		return nil
@@ -385,6 +440,10 @@ func main() {
 				if err != nil {
 					return cli.NewExitError(err, 65)
 				}
+				err = tw.Close()
+				if err != nil {
+					return cli.NewExitError(err, 65)
+				}
 				return nil
 			},
 			Before: bef,
@@ -409,6 +468,10 @@ func main() {
 					if err != nil {
 						return cli.NewExitError(err, 65)
 					}
+				}
+				_, err = fmt.Println()
+				if err != nil {
+					return cli.NewExitError(err, 65)
 				}
 				return nil
 			},
