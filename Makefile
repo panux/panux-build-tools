@@ -1,9 +1,10 @@
-all: buildcontainer/buildcontainer.o pkgen/pkgen.o
+all: pkgen/pkgen.o
 
-godeps:
-	go get -u github.com/urfave/cli gopkg.in/yaml.v2
+.godeps:
+	go get github.com/urfave/cli gopkg.in/yaml.v2
+	touch .godeps
 
-%.o: %.go godeps
+%.o: %.go .godeps
 	go build -o $@ $<
 
 clean:
@@ -15,7 +16,7 @@ endif
 
 install: $(DESTDIR)/$(BINDIR)/buildcontainer $(DESTDIR)/$(BINDIR)/pkgen
 
-$(DESTDIR)/$(BINDIR)/buildcontainer: buildcontainer/buildcontainer.o
+$(DESTDIR)/$(BINDIR)/buildcontainer: buildcontainer.sh
 	install -D -m 0755 $< $@
 $(DESTDIR)/$(BINDIR)/pkgen: pkgen/pkgen.o
 	install -D -m 0755 $< $@
