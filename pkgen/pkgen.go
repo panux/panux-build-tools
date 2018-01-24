@@ -319,6 +319,42 @@ func main() {
 			Before: bef,
 		},
 		{
+			Name:  "pkgs",
+			Usage: "list build dependencies",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "seperator, sep, s",
+					Value: "\n",
+					Usage: "seperator to use for output",
+				},
+				cli.BoolFlag{
+					Name:  "n",
+					Usage: "disable trailing seperator",
+				},
+			},
+			Action: func(ctx *cli.Context) error {
+				pkgs := make([]string, len(pk.Packages))
+				i := 0
+				for n := range pk.Packages {
+					pkgs[i] = n
+					i++
+				}
+				sort.Strings(pkgs)
+				_, err := fmt.Fprint(out, strings.Join(pkgs, ctx.String("seperator")))
+				if err != nil {
+					return cli.NewExitError(err, 65)
+				}
+				if !ctx.Bool("n") {
+					_, err = fmt.Fprint(out, ctx.String("seperator"))
+					if err != nil {
+						return cli.NewExitError(err, 65)
+					}
+				}
+				return nil
+			},
+			Before: bef,
+		},
+		{
 			Name:    "deps",
 			Aliases: []string{"d", "dep"},
 			Usage:   "list build dependencies of a package",
