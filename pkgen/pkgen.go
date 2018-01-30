@@ -109,6 +109,12 @@ func tmpl(str []string, pg *rawPackageGenerator, hostarch string, buildarch stri
 			}
 			return fmt.Sprintf("(cd %s && ./configure %s)", dir, strings.Join(ca, " "))
 		},
+		"confarch": func() string {
+			if buildarch == "x86" {
+				return "i386"
+			}
+			return buildarch
+		},
 	}).Parse(strings.Join(str, "\n"))
 	if err != nil {
 		return nil, err
