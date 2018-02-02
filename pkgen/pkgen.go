@@ -417,6 +417,7 @@ func main() {
 			Usage:   "generate commands to load sources",
 			Action: func(ctx *cli.Context) error {
 				tw := tar.NewWriter(out)
+				pk.Sources = append(pk.Sources, "file://./pkgen.yaml")
 				for _, s := range pk.Sources {
 					u, err := url.Parse(s)
 					if err != nil {
