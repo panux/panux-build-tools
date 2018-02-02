@@ -466,6 +466,31 @@ func main() {
 								return cli.NewExitError(err, 65)
 							}
 						}
+					case "file":
+						u.Path = strings.TrimLeft(u.Path, "/")
+						f, err := os.Open(u.Path)
+						if err != nil {
+							return cli.NewExitError(err, 65)
+						}
+						defer f.Close()
+						info, err := f.Stat()
+						if err != nil {
+							return cli.NewExitError(err, 65)
+						}
+						err = tw.WriteHeader(&tar.Header{
+							Name: fname,
+							Mode: int64(info.Mode()),
+							Size: info.Size(),
+						})
+						if err != nil {
+							return cli.NewExitError(err, 65)
+						}
+						_, err = io.Copy(tw, f)
+						if err != nil {
+							return cli.NewExitError(err, 65)
+						}
+					default:
+						return cli.NewExitError(fmt.Errorf("Unrecognized scheme %q", u.Scheme), 65)
 					}
 				}
 				manifest := []byte(strings.Join(pk.Sources, "\n"))
