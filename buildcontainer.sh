@@ -12,6 +12,7 @@ fi
 if [ -z "$LPKGPATH" ]; then
     if [ -e /usr/bin/lpkg ]; then
         # bootstrapping panux from panux - nothing special
+        echo "Nothing special"
     elif [ -e /usr/local/lpkg ]; then
         export PATH="$PATH:/usr/local/lpkg"
     else
@@ -23,7 +24,7 @@ else
 fi
 
 # prep arguments
-if [ $# < 2 ]; then
+if [ $# -lt 2 ]; then
     echo Insufficient arguments >> /dev/stderr
     exit 1
 fi

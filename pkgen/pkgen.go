@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
-	"html/template"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"text/template"
 
 	"github.com/panux/encoding-sh"
 	"github.com/urfave/cli"
@@ -193,20 +193,21 @@ OUTDIR = $(shell pwd)/out
 PKGS = %s
 VERSION = %s
 BUILDNUM = %d
+OUTDIRS = %s
+OUTS = %s
 TARS = $(foreach pkg,$(PKGS),tars/$(pkg).tar.gz)
-$(TARS): build tars infos
-	tar -cf $@ -C out/$(basename $@) .
-outs: $(foreach pkg,$(PKGS),out/$(pkg)/.pkginfo)
-out/%%: out
+$(TARS): build tars $(OUTS)
+	tar -cf $@ -C out/$(shell basename $@ .tar.gz) .
+$(OUTDIRS): out
 	mkdir $@
-out/%%/.pkginfo: sources out/%%
-	cp src/.pkginfo/$(basename $(dirname $@)).pkginfo out/$(basename $(dirname $@))/.pkginfo
+$(OUTS): sources $(OUTDIRS)
+	cp src/.pkginfo/$(shell basename $(@D)).pkginfo $@
 out tars src:
 	mkdir $@
 gentars: $(TARS)
-sources:
+sources: src
 	tar -xf $(SRCTAR) -C src
-build: outs sources`
+build: $(OUTS) sources`
 
 func main() {
 	app := cli.NewApp()
@@ -569,7 +570,19 @@ func main() {
 					i++
 				}
 				sort.Strings(pklist)
-				_, err := fmt.Fprintf(out, bspre, strings.Join(pklist, " "), pk.Version, pk.Build)
+				outdirs := make([]string, len(pklist))
+				outs := make([]string, len(pklist))
+				for i, v := range pklist {
+					outdirs[i] = fmt.Sprintf("out/%s", v)
+					outs[i] = fmt.Sprintf("out/%s/.pkginfo", v)
+				}
+				_, err := fmt.Fprintf(out, bspre,
+					strings.Join(pklist, " "),
+					pk.Version,
+					pk.Build,
+					strings.Join(outdirs, " "),
+					strings.Join(outs, " "),
+				)
 				if err != nil {
 					return cli.NewExitError(err, 65)
 				}
