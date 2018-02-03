@@ -416,6 +416,12 @@ func main() {
 			Aliases: []string{"src"},
 			Usage:   "generate commands to load sources",
 			Action: func(ctx *cli.Context) error {
+				if ctx.GlobalString("input") != "-" {
+					err := os.Chdir(filepath.Dir(ctx.GlobalString("input")))
+					if err != nil {
+						return cli.NewExitError(err, 65)
+					}
+				}
 				tw := tar.NewWriter(out)
 				pk.Sources = append(pk.Sources, "file://./pkgen.yaml")
 				for _, s := range pk.Sources {
