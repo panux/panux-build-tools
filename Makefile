@@ -1,7 +1,7 @@
 all: pkgen/pkgen.o
 
 .godeps:
-	go get github.com/urfave/cli gopkg.in/yaml.v2
+	go get github.com/urfave/cli gopkg.in/yaml.v2 github.com/panux/encoding-sh
 	touch .godeps
 
 %.o: %.go .godeps

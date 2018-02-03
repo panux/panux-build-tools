@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/panux/encoding-sh"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -500,9 +501,44 @@ func main() {
 						return cli.NewExitError(fmt.Errorf("Unrecognized scheme %q", u.Scheme), 65)
 					}
 				}
+				//add pkginfos
+				err := tw.WriteHeader(&tar.Header{
+					Name:     ".pkginfo",
+					Typeflag: tar.TypeDir,
+					Mode:     0600,
+				})
+				if err != nil {
+					return cli.NewExitError(err, 65)
+				}
+				for name, dat := range pk.Packages {
+					pkginfo, err := sh.Encode(struct {
+						Name         string
+						Version      string
+						Dependencies []string
+					}{
+						Name:         name,
+						Version:      pk.Version,
+						Dependencies: dat.Dependencies,
+					})
+					if err != nil {
+						return cli.NewExitError(err, 65)
+					}
+					err = tw.WriteHeader(&tar.Header{
+						Name: ".pkginfo/" + name + ".pkginfo",
+						Mode: 0600,
+						Size: int64(len(pkginfo)),
+					})
+					if err != nil {
+						return cli.NewExitError(err, 65)
+					}
+					_, err = tw.Write(pkginfo)
+					if err != nil {
+						return cli.NewExitError(err, 65)
+					}
+				}
 				manifest := []byte(strings.Join(pk.Sources, "\n"))
 				//write manifest
-				err := tw.WriteHeader(&tar.Header{
+				err = tw.WriteHeader(&tar.Header{
 					Name: "manifest.txt",
 					Mode: 0600,
 					Size: int64(len(manifest)),
