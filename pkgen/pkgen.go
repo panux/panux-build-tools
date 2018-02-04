@@ -476,28 +476,51 @@ func main() {
 							}
 						}
 					case "file":
-						u.Path = strings.TrimLeft(u.Path, "/")
-						f, err := os.Open(u.Path)
-						if err != nil {
-							return cli.NewExitError(err, 65)
+						var fload func(string) error
+						fload = func(p string) error {
+							p = strings.TrimLeft(p, "/")
+							f, err := os.Open(p)
+							if err != nil {
+								return cli.NewExitError(err, 65)
+							}
+							defer f.Close()
+							info, err := f.Stat()
+							if err != nil {
+								return cli.NewExitError(err, 65)
+							}
+							if info.Mode().IsDir() {
+								err = tw.WriteHeader(&tar.Header{
+									Name:     fname,
+									Mode:     int64(info.Mode()),
+									Typeflag: tar.TypeDir,
+								})
+								infs, err := f.Readdir(0)
+								if err != nil {
+									return cli.NewExitError(err, 65)
+								}
+								for _, v := range infs {
+									err = fload(v.Name())
+									if err != nil {
+										return cli.NewExitError(err, 65)
+									}
+								}
+							} else {
+								err = tw.WriteHeader(&tar.Header{
+									Name: fname,
+									Mode: int64(info.Mode()),
+									Size: info.Size(),
+								})
+								if err != nil {
+									return cli.NewExitError(err, 65)
+								}
+								_, err = io.Copy(tw, f)
+								if err != nil {
+									return cli.NewExitError(err, 65)
+								}
+							}
+							return nil
 						}
-						defer f.Close()
-						info, err := f.Stat()
-						if err != nil {
-							return cli.NewExitError(err, 65)
-						}
-						err = tw.WriteHeader(&tar.Header{
-							Name: fname,
-							Mode: int64(info.Mode()),
-							Size: info.Size(),
-						})
-						if err != nil {
-							return cli.NewExitError(err, 65)
-						}
-						_, err = io.Copy(tw, f)
-						if err != nil {
-							return cli.NewExitError(err, 65)
-						}
+						return fload(u.Path)
 					default:
 						return cli.NewExitError(fmt.Errorf("Unrecognized scheme %q", u.Scheme), 65)
 					}
