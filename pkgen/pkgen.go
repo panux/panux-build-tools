@@ -277,6 +277,11 @@ func main() {
 			return cli.NewExitError(err, 65)
 		}
 		pk = *pg
+		if len(pk.Sources) == 1 {
+			if pk.Sources[0] == "" {
+				pk.Sources = []string{}
+			}
+		}
 		return nil
 	}
 	app.After = func(ctx *cli.Context) error {
@@ -292,6 +297,7 @@ func main() {
 				return cli.NewExitError(err, 65)
 			}
 		}
+		os.Stdout.Close()
 		return nil
 	}
 	//commands
@@ -425,6 +431,7 @@ func main() {
 					}
 				}
 				tw := tar.NewWriter(out)
+				defer tw.Close()
 				pk.Sources = append(pk.Sources, "file://./pkgen.yaml")
 				for _, s := range pk.Sources {
 					u, err := url.Parse(s)
@@ -520,7 +527,10 @@ func main() {
 							}
 							return nil
 						}
-						return fload(u.Path)
+						err := fload(u.Path)
+						if err != nil {
+							return cli.NewExitError(err, 65)
+						}
 					default:
 						return cli.NewExitError(fmt.Errorf("Unrecognized scheme %q", u.Scheme), 65)
 					}
@@ -535,6 +545,9 @@ func main() {
 					return cli.NewExitError(err, 65)
 				}
 				for name, dat := range pk.Packages {
+					if err != nil {
+						return cli.NewExitError(err, 65)
+					}
 					pkginfo, err := sh.Encode(struct {
 						Name         string
 						Version      string
