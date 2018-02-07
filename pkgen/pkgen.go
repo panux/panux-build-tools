@@ -497,7 +497,7 @@ func main() {
 							}
 							if info.Mode().IsDir() {
 								err = tw.WriteHeader(&tar.Header{
-									Name:     fname,
+									Name:     p,
 									Mode:     int64(info.Mode()),
 									Typeflag: tar.TypeDir,
 								})
@@ -513,7 +513,7 @@ func main() {
 								}
 							} else {
 								err = tw.WriteHeader(&tar.Header{
-									Name: fname,
+									Name: p,
 									Mode: int64(info.Mode()),
 									Size: info.Size(),
 								})
