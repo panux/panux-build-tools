@@ -116,6 +116,12 @@ func tmpl(str []string, pg *rawPackageGenerator, hostarch string, buildarch stri
 			}
 			return buildarch
 		},
+		"hostarch": func() string {
+			return hostarch
+		},
+		"buildarch": func() string {
+			return buildarch
+		},
 	}).Parse(strings.Join(str, "\n"))
 	if err != nil {
 		return nil, err
@@ -464,11 +470,12 @@ func main() {
 							stream = g.Body
 							len = g.ContentLength
 						}
-						err = tw.WriteHeader(&tar.Header{
+						h := &tar.Header{
 							Name: fname,
 							Mode: 0600,
 							Size: len,
-						})
+						}
+						err = tw.WriteHeader(h)
 						if err != nil {
 							return cli.NewExitError(err, 65)
 						}
@@ -506,17 +513,18 @@ func main() {
 									return cli.NewExitError(err, 65)
 								}
 								for _, v := range infs {
-									err = fload(v.Name())
+									err = fload(filepath.Join(p, v.Name()))
 									if err != nil {
 										return cli.NewExitError(err, 65)
 									}
 								}
 							} else {
-								err = tw.WriteHeader(&tar.Header{
+								h := &tar.Header{
 									Name: p,
 									Mode: int64(info.Mode()),
 									Size: info.Size(),
-								})
+								}
+								err = tw.WriteHeader(h)
 								if err != nil {
 									return cli.NewExitError(err, 65)
 								}
