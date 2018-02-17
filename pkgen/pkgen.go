@@ -122,6 +122,17 @@ func tmpl(str []string, pg *rawPackageGenerator, hostarch string, buildarch stri
 		"buildarch": func() string {
 			return buildarch
 		},
+		"confflags": func() string {
+			build := buildarch
+			if buildarch == "x86" {
+				build = "i386"
+			}
+			host := hostarch
+			if hostarch == "x86" {
+				host = "i386"
+			}
+			return fmt.Sprintf("--build %s-pc-linux-musl --host %s-pc-linux-musl", build, host)
+		},
 	}).Parse(strings.Join(str, "\n"))
 	if err != nil {
 		return nil, err
