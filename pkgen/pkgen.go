@@ -63,7 +63,8 @@ func loadPkgen(in io.Reader, hostarch string, buildarch string) (pg *rawPackageG
 }
 
 func tmpl(str []string, pg *rawPackageGenerator, hostarch string, buildarch string) ([]string, error) {
-	t, err := template.New("pkgen").Funcs(map[string]interface{}{
+	var ft map[string]interface{}
+	ft = map[string]interface{}{
 		"make": func(dir string, args ...string) string {
 			lines := make([]string, len(args))
 			for i, a := range args {
@@ -99,16 +100,8 @@ func tmpl(str []string, pg *rawPackageGenerator, hostarch string, buildarch stri
 		"mvman": func(pkg string) string {
 			return fmt.Sprintf("mkdir -p out/%s-man/usr/share\nmv out/%s/usr/share/man out/%s-man/usr/share/man", pkg, pkg, pkg)
 		},
-		"configure": func(dir string) string {
-			if pg.Data["configure"] == nil {
-				pg.Data["configure"] = []interface{}{}
-			}
-			car := pg.Data["configure"].([]interface{})
-			ca := make([]string, len(car))
-			for i, v := range car {
-				ca[i] = v.(string)
-			}
-			return fmt.Sprintf("(cd %s && ./configure %s)", dir, strings.Join(ca, " "))
+		"configure": func(dir string, args ...string) string {
+			return fmt.Sprintf("(cd %s && ./configure %s %s)", dir, strings.Join(args, " "), ft["confflags"].(func() string)())
 		},
 		"confarch": func() string {
 			if buildarch == "x86" {
@@ -133,7 +126,8 @@ func tmpl(str []string, pg *rawPackageGenerator, hostarch string, buildarch stri
 			}
 			return fmt.Sprintf("--build %s-pc-linux-musl --host %s-pc-linux-musl", build, host)
 		},
-	}).Parse(strings.Join(str, "\n"))
+	}
+	t, err := template.New("pkgen").Funcs(ft).Parse(strings.Join(str, "\n"))
 	if err != nil {
 		return nil, err
 	}
