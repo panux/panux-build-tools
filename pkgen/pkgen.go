@@ -213,6 +213,7 @@ out tars src:
 gentars: $(TARS)
 sources: src
 	tar -xf $(SRCTAR) -C src
+.ONESHELL:
 build: $(OUTS) sources`
 
 func main() {
