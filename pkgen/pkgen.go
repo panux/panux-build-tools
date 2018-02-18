@@ -101,7 +101,7 @@ func tmpl(str []string, pg *rawPackageGenerator, hostarch string, buildarch stri
 			return fmt.Sprintf("mkdir -p out/%s-man/usr/share\nmv out/%s/usr/share/man out/%s-man/usr/share/man", pkg, pkg, pkg)
 		},
 		"configure": func(dir string, args ...string) string {
-			return fmt.Sprintf("(cd %s && ./configure %s %s)", dir, strings.Join(args, " "), ft["confflags"].(func() string)())
+			return fmt.Sprintf("(cd %s && ./configure %s --prefix=/usr --sysconfdir=/etc --mandir=/usr/share/man --localstatedir=/var %s)", dir, ft["confflags"].(func() string)(), strings.Join(args, " "))
 		},
 		"confarch": func() string {
 			if buildarch == "x86" {
